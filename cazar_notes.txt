@@ -1,0 +1,6 @@
+- data flows from eploring the outline of a data file to exploring the granular details of the provided date
+- high level exploration
+	- what kind of file is it
+	- what is the structure of the file
+	- what fields are provided
+	- how many records were sent
