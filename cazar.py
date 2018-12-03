@@ -7,6 +7,7 @@ Created on Tue Sep 25 16:25:46 2018
 # import os
 import re
 import xml.etree.ElementTree as et
+import pandas as pd
 
 # os.getcwd().split('\\')[0:4]
 # '\\'.join(os.getcwd().split('\\')[0:4])
@@ -73,6 +74,7 @@ class PrintFile(object):
             doc_dict[str(split_doc[doc_num_line - 1][doc_num_strt - 1:doc_num_end - 1]).strip()] = split_doc
         self.parsed_dict = doc_dict
         return doc_dict
+        
     
     def prt_all_from_pos(self, line_num, strt_pos, end_pos):
         # prints all values from parsed_dic to screen using provided line #
@@ -86,47 +88,54 @@ class PrintFile(object):
     # inherit off the base 
     
 class XmlFile(object):
-    def __init__(self, file_path, doc_keyword):
+    # set doc_id var as init param
+    def __init__(self, file_path, doc_keyword, doc_id):
         # doc_keyword param identifies element that marks separation of docs
         # within the xml
         self.file_path = file_path
         self.doc_keyword = doc_keyword
+        self.doc_id = doc_id
         # parse xml
         self.tree = et.parse(file_path)
         # get root node of document
         self.root = self.tree.getroot()
         # return all sub elements
-        self.elements_list = [i.tag for i in self.root.findall('.//')]
+        self.elements_list = set([i.tag for i in self.root.findall('.//')])
         
     def get_doc_by_num(self, doc_num):
-        a = self.root.findall('.//{}'.format(self.doc_keyword))
+        a = self.root.findall('./{}'.format(self.doc_keyword))
         for i in a:
-            if i[2][0].text.strip() == doc_num:
-                return i
-                break
-            else:
+            try: 
+                if i.find('.//{}'.format(self.doc_id)).text.strip() == doc_num:
+                    return i
+            except AttributeError as e:
+                print('AE error: {}'.format(e))
                 pass
+                
         print('Document #: {} was not found'.format(doc_num))
         return
     
     def get_all_docs(self):
-        return self.root.findall('.//{}'.format(self.doc_keyword))
+        return self.root.findall('./{}'.format(self.doc_keyword))
     
     def prnt_all_for_elem(self, elem):
         return [i.text for i in self.root.findall('.//{}'.format(elem))]
     
     def get_root(self):
         return self.root
-    
     def get_tree(self):
         return self.tree
     
-    def check_all_elem_agnst_value(self, elem, val):
+    def check_all_elem_agnst_value(self, elem, val, check_null=False):
         a_list = []
         for i in self.get_all_docs():
             try:
-                if i.find('.//{}'.format(elem)).text.strip() == '{}'.format(val):
-                    a_list.append(i[2][0].text.strip())
+                if check_null:
+                    if i.find('.//{}'.format(elem)).text.strip() != '{}'.format(val):
+                        a_list.append(i.find('.//{}'.format(self.doc_id)).text.strip())
+                else:
+                    if i.find('.//{}'.format(elem)).text.strip() == '{}'.format(val):
+                        a_list.append(i.find('.//{}'.format(self.doc_id)).text.strip())
             except AttributeError:
                 pass
         return a_list
@@ -141,26 +150,70 @@ class XmlFile(object):
                     pass
         return max(elem_list, key=len, default=None)
     
+    def get_all_max_vals(self):
+        max_width_list = []
+        print('Getting max vals for {} elements'.format(len(self.elements_list)))
+        for item in self.elements_list:
+            max_val = self.get_max_val(item)
+            if max_val is not None:
+                max_width_list.append((item, len(max_val), max_val))
+            else:
+                max_width_list.append((item, 'Empty', 0))
+        return max_width_list
+    
+    def get_docid_if_elem_present(self, elem):
+        result_list = []
+        for i in self.get_all_docs():
+            if bool(i.findall('.//{}'.format(elem))):
+                result_list.append(i.find('.//{}'.format(self.doc_id)).text)
+        return result_list
+    
+    def create_xml_file_for_doc(self, doc_num, filename):
+        doc = self.get_doc_by_num(doc_num)
+        create_xml_file_from_elem(doc, filename)
+    
     def build_parent_map(self):
         # change s[0] to stmts
         parent_map = dict((c, p) for p in s[0].iter() for c in p)
         # this is going to miss parent/children relationships that are not
         # terminal, ie parent/children that are both nested nodes
-            
-            
         
-            
-                 
+def create_xml_file_from_elem(elem, filename, is_list=False):
+    elem_tree = et.ElementTree(elem)
+    root = et.Element('root')
+    elem_tree._setroot(root)
+    if is_list:
+        for i in elem:
+            root.append(i)
+    else:
+        root.append(elem)
+    elem_tree.write(filename)
+    return print('{} file created'.format(filename))
+    '''
+    steps to create xml for from list of doc #s
+    - use get_doc_by_num for loop to grab all docs out of root
+    - should be list of doc elements
+    - create new element tree using ElementTree()
+    - add root to new element tree 
+    - root = et.Element('root') ; confirm with tree.gteroot()
+    - loop through list of doc elements [root.append(i) for i in match_docs]
+    - create_xml_file_from_elem func above
     
+    '''
+    
+#TODO should be able to do something by nested for loops that check elements
+# length and build dicts
+        
+# TODO add doc_id_num to contructor
+        
+
+class DelimFile(object):
+    def __init__(self, filename, delim =',', ext='.xml'):
+        self.delim = delim
+        self.ext = ext
+        df = pd.read_csv(filename, sep=delim)
         
         
-    
-    
-    
-    
-    
-    
-    
     
     
     
